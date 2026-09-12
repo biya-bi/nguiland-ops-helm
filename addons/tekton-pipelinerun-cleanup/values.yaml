@@ -108,14 +108,14 @@ script: |
       log "$line"
       case "$line" in
         Deleted:*) deleted=$((deleted + 1)) ;;
-        FAILED:*) failed=$((failed + 1)) ;;
+        Failed:*) failed=$((failed + 1)) ;;
       esac
     done < <(
       echo -e "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
         if kubectl delete pipelinerun "{}" -n "'"$namespace"'" --ignore-not-found=true >/dev/null 2>&1; then
           echo "Deleted: {}"
         else
-          echo "FAILED: {}"
+          echo "Failed: {}"
         fi
       '
     )
