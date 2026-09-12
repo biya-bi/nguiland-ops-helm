@@ -106,12 +106,12 @@ script: |
         esac
       done < <(
         printf '%s' "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
-          if kubectl delete pipelinerun "{}" -n "'"$namespace"'" --ignore-not-found=true >/dev/null 2>&1; then
-            printf '%s\n' "Deleted: {}"
+          if kubectl delete pipelinerun "$1" -n "$2" --ignore-not-found=true >/dev/null 2>&1; then
+            printf '%s\n' "Deleted: $1"
           else
-            printf '%s\n' "Failed: {}"
+            printf '%s\n' "Failed: $1"
           fi
-        '
+        ' sh "{}" "$namespace"
       )
     fi
   }
