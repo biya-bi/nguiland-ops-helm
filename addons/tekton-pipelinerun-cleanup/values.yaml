@@ -61,6 +61,10 @@ script: |
   select_pipelineruns() {
     local now="$1"
     local results="$2"
+    local -n count_ref="$3"
+    local -n skipped_ref="$4"
+    local -n selected_ref="$5"
+    local -n to_delete_ref="$6"
     local line name created status created_ts age_minutes
 
     while IFS= read -r line; do
@@ -73,14 +77,14 @@ script: |
 
       created_ts=$(date -d "$created" +%s 2>/dev/null) || continue
       age_minutes=$(( (now - created_ts) / 60 ))
-      count=$((count + 1))
+      count_ref=$((count_ref + 1))
 
       if [ "$age_minutes" -lt "$MIN_AGE_MINUTES" ]; then
-        skipped=$((skipped + 1))
+        skipped_ref=$((skipped_ref + 1))
         continue
       fi
 
-      if [ "$selected" -ge "$MAX_DELETIONS" ]; then
+      if [ "$selected_ref" -ge "$MAX_DELETIONS" ]; then
         log "Reached MAX_DELETIONS=$MAX_DELETIONS, stopping selection"
         break
       fi
@@ -90,22 +94,30 @@ script: |
         continue
       fi
 
-      to_delete="${to_delete}${name}"$'\n'
-      selected=$((selected + 1))
+      to_delete_ref="${to_delete_ref}${name}"$'\n'
+      selected_ref=$((selected_ref + 1))
     done <<< "$results"
   }
 
   delete_pipelineruns() {
-    if [ "$DRY_RUN" = "false" ] && [ -n "$to_delete" ]; then
-      log "Deleting PipelineRuns with parallelism=$PARALLELISM"
+    local to_delete="$1"
+    local namespace="$2"
+    local dry_run="$3"
+    local parallelism="$4"
+    local -n deleted_ref="$5"
+    local -n failed_ref="$6"
+    local line
+
+    if [ "$dry_run" = "false" ] && [ -n "$to_delete" ]; then
+      log "Deleting PipelineRuns with parallelism=$parallelism"
       while read -r line; do
         log "$line"
         case "$line" in
-          Deleted:*) deleted=$((deleted + 1)) ;;
-          Failed:*) failed=$((failed + 1)) ;;
+          Deleted:*) deleted_ref=$((deleted_ref + 1)) ;;
+          Failed:*) failed_ref=$((failed_ref + 1)) ;;
         esac
       done < <(
-        printf '%s' "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
+        printf '%s' "$to_delete" | xargs -P "$parallelism" -I {} sh -c '
           if kubectl delete pipelinerun "$1" -n "$2" --ignore-not-found=true >/dev/null 2>&1; then
             printf '%s\n' "Deleted: $1"
           else
@@ -119,11 +131,15 @@ script: |
   main() {
     validate_config
 
+    local namespace
     namespace=$(get_namespace)
 
     log "Starting cleanup (dry-run=$DRY_RUN, namespace=$namespace)"
 
+    local now
     now=$(date +%s)
+
+    local results
     results=$(kubectl get pipelineruns -n "$namespace" \
       -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{" "}{.status.conditions[0].status}{"\n"}{end}' 2>/dev/null || true)
 
@@ -132,11 +148,16 @@ script: |
       exit 0
     fi
 
-    count=0; deleted=0; skipped=0; failed=0; selected=0; to_delete=""
+    local count=0
+    local deleted=0
+    local skipped=0
+    local failed=0
+    local selected=0
+    local to_delete=""
 
-    select_pipelineruns "$now" "$results"
+    select_pipelineruns "$now" "$results" "count" "skipped" "selected" "to_delete"
 
-    delete_pipelineruns
+    delete_pipelineruns "$to_delete" "$namespace" "$DRY_RUN" "$PARALLELISM" "deleted" "failed"
 
     log "Summary: processed=$count selected=$selected deleted=$deleted skipped=$skipped failed=$failed"
   }
