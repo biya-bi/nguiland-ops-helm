@@ -90,7 +90,7 @@ script: |
         continue
       fi
 
-      to_delete="${to_delete}${name}\n"
+      to_delete="${to_delete}${name}"$'\n'
       selected=$((selected + 1))
     done <<< "$results"
   }
@@ -105,7 +105,7 @@ script: |
           Failed:*) failed=$((failed + 1)) ;;
         esac
       done < <(
-        echo -e "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
+        printf '%s' "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
           if kubectl delete pipelinerun "{}" -n "'"$namespace"'" --ignore-not-found=true >/dev/null 2>&1; then
             printf '%s\n' "Deleted: {}"
           else
