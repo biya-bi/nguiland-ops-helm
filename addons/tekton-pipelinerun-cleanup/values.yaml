@@ -36,89 +36,109 @@ script: |
     fi
   }
 
-  # Validate required env vars
-  : "${MIN_AGE_MINUTES:?ERROR: MIN_AGE_MINUTES is required}"
-  : "${DRY_RUN:?ERROR: DRY_RUN is required}"
-  : "${PARALLELISM:?ERROR: PARALLELISM is required}"
-  : "${MAX_DELETIONS:?ERROR: MAX_DELETIONS is required}"
+  validate_config() {
+    # Validate required env vars
+    : "${MIN_AGE_MINUTES:?ERROR: MIN_AGE_MINUTES is required}"
+    : "${DRY_RUN:?ERROR: DRY_RUN is required}"
+    : "${PARALLELISM:?ERROR: PARALLELISM is required}"
+    : "${MAX_DELETIONS:?ERROR: MAX_DELETIONS is required}"
 
-  if ! [[ "$MIN_AGE_MINUTES" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: MIN_AGE_MINUTES must be a positive integer"; exit 1
-  fi
-
-  # Enforce parallelism range
-  if [ "$PARALLELISM" -lt 1 ] || [ "$PARALLELISM" -gt 20 ]; then
-    echo "ERROR: PARALLELISM must be between 1 and 20"; exit 1
-  fi
-
-  case "$DRY_RUN" in
-    true|false) ;;
-    *) echo "ERROR: DRY_RUN must be 'true' or 'false'"; exit 1 ;;
-  esac
-
-  namespace=$(get_namespace)
-
-  log "Starting cleanup (dry-run=$DRY_RUN, namespace=$namespace)"
-
-  now=$(date +%s)
-  results=$(kubectl get pipelineruns -n "$namespace" \
-    -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{" "}{.status.conditions[0].status}{"\n"}{end}' 2>/dev/null || true)
-
-  if [ -z "$results" ]; then
-    log "No PipelineRuns found"
-    exit 0
-  fi
-
-  count=0; deleted=0; skipped=0; failed=0; selected=0; to_delete=""
-
-  while IFS= read -r line; do
-    name=$(echo "$line" | awk '{print $1}')
-    created=$(echo "$line" | awk '{print $2}')
-    status=$(echo "$line" | awk '{print $3}')
-
-    [ -z "$name" ] || [ -z "$created" ] || [ -z "$status" ] && continue
-    [[ "$status" != "True" && "$status" != "False" ]] && continue
-
-    created_ts=$(date -d "$created" +%s 2>/dev/null) || continue
-    age_minutes=$(( (now - created_ts) / 60 ))
-    count=$((count + 1))
-
-    if [ "$age_minutes" -lt "$MIN_AGE_MINUTES" ]; then
-      skipped=$((skipped + 1))
-      continue
+    if ! [[ "$MIN_AGE_MINUTES" =~ ^[0-9]+$ ]]; then
+      echo "ERROR: MIN_AGE_MINUTES must be a positive integer"; exit 1
     fi
 
-    if [ "$selected" -ge "$MAX_DELETIONS" ]; then
-      log "Reached MAX_DELETIONS=$MAX_DELETIONS, stopping selection"
-      break
+    # Enforce parallelism range
+    if [ "$PARALLELISM" -lt 1 ] || [ "$PARALLELISM" -gt 20 ]; then
+      echo "ERROR: PARALLELISM must be between 1 and 20"; exit 1
     fi
 
-    if [ "$DRY_RUN" = "true" ]; then
-      log "[DRY-RUN] Would delete: $name (${age_minutes}m old)"
-      continue
+    case "$DRY_RUN" in
+      true|false) ;;
+      *) echo "ERROR: DRY_RUN must be 'true' or 'false'"; exit 1 ;;
+    esac
+  }
+
+  select_pipelineruns() {
+    local now="$1"
+    local results="$2"
+    local line name created status created_ts age_minutes
+
+    while IFS= read -r line; do
+      name=$(echo "$line" | awk '{print $1}')
+      created=$(echo "$line" | awk '{print $2}')
+      status=$(echo "$line" | awk '{print $3}')
+
+      [ -z "$name" ] || [ -z "$created" ] || [ -z "$status" ] && continue
+      [[ "$status" != "True" && "$status" != "False" ]] && continue
+
+      created_ts=$(date -d "$created" +%s 2>/dev/null) || continue
+      age_minutes=$(( (now - created_ts) / 60 ))
+      count=$((count + 1))
+
+      if [ "$age_minutes" -lt "$MIN_AGE_MINUTES" ]; then
+        skipped=$((skipped + 1))
+        continue
+      fi
+
+      if [ "$selected" -ge "$MAX_DELETIONS" ]; then
+        log "Reached MAX_DELETIONS=$MAX_DELETIONS, stopping selection"
+        break
+      fi
+
+      if [ "$DRY_RUN" = "true" ]; then
+        log "[DRY-RUN] Would delete: $name (${age_minutes}m old)"
+        continue
+      fi
+
+      to_delete="${to_delete}${name}\n"
+      selected=$((selected + 1))
+    done <<< "$results"
+  }
+
+  delete_pipelineruns() {
+    if [ "$DRY_RUN" = "false" ] && [ -n "$to_delete" ]; then
+      log "Deleting PipelineRuns with parallelism=$PARALLELISM"
+      while read -r line; do
+        log "$line"
+        case "$line" in
+          Deleted:*) deleted=$((deleted + 1)) ;;
+          Failed:*) failed=$((failed + 1)) ;;
+        esac
+      done < <(
+        echo -e "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
+          if kubectl delete pipelinerun "{}" -n "'"$namespace"'" --ignore-not-found=true >/dev/null 2>&1; then
+            printf '%s\n' "Deleted: {}"
+          else
+            printf '%s\n' "Failed: {}"
+          fi
+        '
+      )
+    fi
+  }
+
+  main() {
+    validate_config
+
+    namespace=$(get_namespace)
+
+    log "Starting cleanup (dry-run=$DRY_RUN, namespace=$namespace)"
+
+    now=$(date +%s)
+    results=$(kubectl get pipelineruns -n "$namespace" \
+      -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.creationTimestamp}{" "}{.status.conditions[0].status}{"\n"}{end}' 2>/dev/null || true)
+
+    if [ -z "$results" ]; then
+      log "No PipelineRuns found"
+      exit 0
     fi
 
-    to_delete="${to_delete}${name}\n"
-    selected=$((selected + 1))
-  done <<< "$results"
+    count=0; deleted=0; skipped=0; failed=0; selected=0; to_delete=""
 
-  if [ "$DRY_RUN" = "false" ] && [ -n "$to_delete" ]; then
-    log "Deleting PipelineRuns with parallelism=$PARALLELISM"
-    while read -r line; do
-      log "$line"
-      case "$line" in
-        Deleted:*) deleted=$((deleted + 1)) ;;
-        Failed:*) failed=$((failed + 1)) ;;
-      esac
-    done < <(
-      echo -e "$to_delete" | xargs -P "$PARALLELISM" -I {} sh -c '
-        if kubectl delete pipelinerun "{}" -n "'"$namespace"'" --ignore-not-found=true >/dev/null 2>&1; then
-          printf '%s\n' "Deleted: {}"
-        else
-          printf '%s\n' "Failed: {}"
-        fi
-      '
-    )
-  fi
+    select_pipelineruns "$now" "$results"
 
-  log "Summary: processed=$count selected=$selected deleted=$deleted skipped=$skipped failed=$failed"
+    delete_pipelineruns
+
+    log "Summary: processed=$count selected=$selected deleted=$deleted skipped=$skipped failed=$failed"
+  }
+
+  main "$@"
