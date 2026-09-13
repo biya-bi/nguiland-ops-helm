@@ -106,25 +106,29 @@ script: |
     local parallelism="$4"
     local -n deleted_ref="$5"
     local -n failed_ref="$6"
+    local deletion_results
     local line
 
     if [ "$dry_run" = "false" ] && [ -n "$to_delete" ]; then
       log "Deleting PipelineRuns with parallelism=$parallelism"
-      while read -r line; do
+
+      deletion_results=$(
+        printf '%s' "$to_delete" | xargs -P "$parallelism" -I {} sh -c '
+          if kubectl delete pipelinerun "$1" -n "$2" --ignore-not-found=true >/dev/null 2>&1; then
+            printf "%s\n" "Deleted: $1"
+          else
+            printf "%s\n" "Failed: $1"
+          fi
+        ' sh "{}" "$namespace"
+      )
+
+      while IFS= read -r line; do
         log "$line"
         case "$line" in
           Deleted:*) deleted_ref=$((deleted_ref + 1)) ;;
           Failed:*) failed_ref=$((failed_ref + 1)) ;;
         esac
-      done < <(
-        printf '%s' "$to_delete" | xargs -P "$parallelism" -I {} sh -c '
-          if kubectl delete pipelinerun "$1" -n "$2" --ignore-not-found=true >/dev/null 2>&1; then
-            printf '%s\n' "Deleted: $1"
-          else
-            printf '%s\n' "Failed: $1"
-          fi
-        ' sh "{}" "$namespace"
-      )
+      done <<< "$deletion_results"
     fi
   }
 
