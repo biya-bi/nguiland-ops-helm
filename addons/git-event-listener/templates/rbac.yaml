@@ -4,6 +4,14 @@ metadata:
   name: {{ include "git-event-listener.fullname" . }}
 rules:
   - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - git-event-listener-dependencies
+    verbs:
+      - get
+  - apiGroups:
       - tekton.dev
     resources:
       - pipelineruns
