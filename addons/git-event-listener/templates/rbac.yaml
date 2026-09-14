@@ -4,13 +4,13 @@ metadata:
   name: {{ include "git-event-listener.fullname" . }}
 rules:
   - apiGroups:
-      - ""
+      - cicd.nguiland.io
     resources:
-      - configmaps
-    resourceNames:
-      - git-event-listener-dependencies
+      - dependencygraphs
     verbs:
       - get
+      - list
+      - watch
   - apiGroups:
       - tekton.dev
     resources:
