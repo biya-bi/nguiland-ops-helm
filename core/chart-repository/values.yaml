@@ -93,7 +93,7 @@ affinity: {}
 repoExtractor:
   image: docker.io/bitnami/kubectl@sha256:0ed36a7f6a94c1b82d70811ed03caf3df92b4b2b8f8817d0f726f0f3a26e64af
   envMap:
-    FLUX_GIT_REPO_NAME: helm
+    FLUX_GIT_REPO_NAME: nguiland-ops-helm
   command: 
     - /bin/bash
     - -c
