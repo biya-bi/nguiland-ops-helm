@@ -48,19 +48,31 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-livenessProbe:
-  httpGet:
-    path: /health
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 10
-
-readinessProbe:
+startupProbe:
   httpGet:
     path: /health
     port: http
   initialDelaySeconds: 2
   periodSeconds: 5
+  failureThreshold: 6
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2
 
 autoscaling:
   enabled: false
