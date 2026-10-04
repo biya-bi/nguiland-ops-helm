@@ -7,6 +7,8 @@
 {{ printf "---\n" }}
 {{ include "artifactory-common.data" . | printf "%s\n" }}
 {{ printf "---\n" }}
+{{ include "artifactory-common.config" . | printf "%s\n" }}
+{{ printf "---\n" }}
 {{ include "artifactory-common.entrypoint" . | printf "%s\n" }}
 {{ printf "---\n" }}
 {{ include "artifactory-common.hpa" . | printf "%s\n" }}

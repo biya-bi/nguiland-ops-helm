@@ -128,6 +128,15 @@
       "description": "Additional environment variables for Artifactory."
     }
     ,
+    "repoTypes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Repository types to enable during Artifactory onboarding."
+    }
+    ,
     "cleanup": {
       "type": "object",
       "description": "Cleanup sidecar configuration.",
@@ -181,6 +190,7 @@
   "required": [
     "systemName",
     "service",
-    "image"
+    "image",
+    "repoTypes"
   ]
 }

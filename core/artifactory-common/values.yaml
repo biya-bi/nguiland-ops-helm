@@ -2,6 +2,8 @@
 
 systemName: artifactory
 
+repoTypes: []
+
 image:
   repository: releases-docker.jfrog.io/jfrog/artifactory
   pullPolicy: IfNotPresent

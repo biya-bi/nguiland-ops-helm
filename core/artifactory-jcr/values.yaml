@@ -2,6 +2,9 @@
 
 systemName: jcr
 
+repoTypes:
+  - docker
+
 image:
   repository: releases-docker.jfrog.io/jfrog/artifactory-jcr
 
