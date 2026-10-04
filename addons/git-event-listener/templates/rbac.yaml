@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: {{ include "git-event-listener.fullname" . }}
+  name: {{ include "git-event-listener.clusterRoleName" . }}
 rules:
   - apiGroups:
       - cicd.nguiland.io
@@ -20,13 +20,14 @@ rules:
       - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: {{ include "git-event-listener.fullname" . }}
+  name: {{ include "git-event-listener.clusterRoleName" . }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "git-event-listener.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ include "git-event-listener.fullname" . }}
+  kind: ClusterRole
+  name: {{ include "git-event-listener.clusterRoleName" . }}
