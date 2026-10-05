@@ -63,6 +63,15 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Return the namespace containing the GitRepository used by the extractor.
+*/}}
+{{- define "chart-repository.gitRepositoryNamespace" -}}
+{{- $repoExtractor := .Values.repoExtractor | default dict -}}
+{{- $envMap := $repoExtractor.envMap | default dict -}}
+{{- get $envMap "FLUX_GIT_REPO_NAMESPACE" | default .Release.Namespace -}}
+{{- end }}
+
+{{/*
 Environment variables shared by containers
 */}}
 {{- define "chart-repository.env" -}}
