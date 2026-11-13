@@ -16,6 +16,13 @@ dataChown:
   # Enable the data ownership correction init container.
   # Set to false to disable the chown step when the volume already has correct permissions.
   enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 service:
   port: 8081
@@ -27,6 +34,13 @@ cleanup:
   extraConfigMaps: []
   # Optional environment variables exposed only to the cleanup sidecar.
   env: []
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
   # Image used for the cleanup sidecar. Consumers can override to provide tools like `curl`.
   image:
     repository: bash

@@ -63,6 +63,11 @@
 {{- else if kindIs "bool" $dataChownConfig -}}
   {{- $dataChownEnabled = $dataChownConfig -}}
 {{- end -}}
+{{- $dataChownResources := dict "requests" (dict "cpu" "100m" "memory" "128Mi") "limits" (dict "cpu" "500m" "memory" "512Mi") -}}
+{{- $dataChownResources = mergeOverwrite $dataChownResources (dig "artifactory-common" "dataChown" "resources" dict $values) -}}
+{{- if kindIs "map" $dataChownConfig -}}
+  {{- $dataChownResources = mergeOverwrite $dataChownResources (dig "resources" dict $dataChownConfig) -}}
+{{- end -}}
 
 {{- /* Pod Scheduling Configuration */ -}}
 {{- $nodeSelector := dig "nodeSelector" dict $values | default (dig "artifactory-common" "nodeSelector" dict $values) -}}
@@ -97,6 +102,12 @@
 {{- $cleanupImageRepository := dig "repository" "" $cleanupImage | default "bash" -}}
 {{- $cleanupImageTag := dig "tag" "" $cleanupImage | default "5.3" -}}
 {{- $cleanupImagePull := dig "pullPolicy" "" $cleanupImage | default "IfNotPresent" -}}
+{{- $cleanupResources := dict "requests" (dict "cpu" "25m" "memory" "32Mi") "limits" (dict "cpu" "100m" "memory" "128Mi") -}}
+{{- $cleanupResources = mergeOverwrite $cleanupResources (dig "artifactory-common" "cleanup" "resources" dict $values) -}}
+{{- $cleanupConfig := dig "cleanup" nil $values | default (dig "artifactory-common" "cleanup" dict $values) -}}
+{{- if kindIs "map" $cleanupConfig -}}
+  {{- $cleanupResources = mergeOverwrite $cleanupResources (dig "resources" dict $cleanupConfig) -}}
+{{- end -}}
 
 apiVersion: apps/v1
 kind: Deployment
@@ -148,6 +159,8 @@ spec:
           volumeMounts:
             - name: {{ include "artifactory-common.fullname" . }}-data
               mountPath: /var/opt/jfrog/artifactory
+          resources:
+            {{- toYaml $dataChownResources | nindent 12 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -209,6 +222,8 @@ spec:
               name: {{ include "artifactory-common.fullname" . }}-util-scripts
             - mountPath: /var/opt/jfrog/artifactory
               name: {{ include "artifactory-common.fullname" . }}-data
+          resources:
+            {{- toYaml $cleanupResources | nindent 12 }}
           env:
             {{- toYaml $cleanupAllEnvs | nindent 12 }}
       volumes:
