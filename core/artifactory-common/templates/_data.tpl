@@ -1,5 +1,6 @@
 {{- define "artifactory-common.data" -}}
 {{- $persistence := .Values.persistence | default dict -}}
+{{- $accessModes := $persistence.accessModes | default (list "ReadWriteOnce") -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -8,7 +9,7 @@ metadata:
     {{- include "artifactory-common.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    {{- toYaml $accessModes | nindent 4 }}
   {{- if $persistence.storageClass }}
   storageClassName: {{ $persistence.storageClass | quote }}
   {{- end }}
