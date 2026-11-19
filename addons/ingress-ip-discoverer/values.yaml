@@ -1,0 +1,61 @@
+image:
+  repository: alpine/kubectl
+  digest: sha256:02791a008d526a0b2ca9edc9692d86933b4a164e64d1c012eb46e30fca18d818
+  pullPolicy: IfNotPresent
+
+backoffLimit: 5
+activeDeadlineSeconds: 360
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+ingressController:
+  # Empty means use the Helm release namespace.
+  namespace: ""
+  serviceName: ingress-nginx-controller
+
+configMap:
+  name: ingress-controller-vars
+  key: INGRESS_CONTROLLER_IP
+
+# Environment variables consumed by the script.
+# tpl in job.yaml evaluates the Helm expressions below.
+envMap:
+  INGRESS_SERVICE_NAME: "{{ .Values.ingressController.serviceName }}"
+  INGRESS_SERVICE_NAMESPACE: "{{ .Values.ingressController.namespace | default .Release.Namespace }}"
+  CONFIGMAP_NAME: "{{ .Values.configMap.name }}"
+  CONFIGMAP_NAMESPACE: "{{ .Release.Namespace }}"
+  CONFIGMAP_KEY: "{{ .Values.configMap.key }}"
+  MAX_ATTEMPTS: "60"
+  SLEEP_SECONDS: "5"
+
+# Additional Kubernetes environment variables.
+env: []

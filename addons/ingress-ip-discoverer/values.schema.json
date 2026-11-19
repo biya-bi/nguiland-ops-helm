@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S+$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-fA-F0-9]{64}$"
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S+$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "digest"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "tag"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "tag"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "envMap": {
+      "type": "object",
+      "properties": {
+        "INGRESS_SERVICE_NAME": {
+          "type": "string",
+          "minLength": 1
+        },
+        "INGRESS_SERVICE_NAMESPACE": {
+          "type": "string",
+          "minLength": 1
+        },
+        "CONFIGMAP_NAME": {
+          "type": "string",
+          "minLength": 1
+        },
+        "CONFIGMAP_NAMESPACE": {
+          "type": "string",
+          "minLength": 1
+        },
+        "CONFIGMAP_KEY": {
+          "type": "string",
+          "minLength": 1
+        },
+        "MAX_ATTEMPTS": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "SLEEP_SECONDS": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "INGRESS_SERVICE_NAME",
+        "INGRESS_SERVICE_NAMESPACE",
+        "CONFIGMAP_NAME",
+        "CONFIGMAP_NAMESPACE",
+        "CONFIGMAP_KEY",
+        "MAX_ATTEMPTS",
+        "SLEEP_SECONDS"
+      ],
+      "additionalProperties": false
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueFrom": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "backoffLimit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "activeDeadlineSeconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ingressController": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "serviceName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        }
+      },
+      "required": [
+        "serviceName"
+      ],
+      "additionalProperties": false
+    },
+    "configMap": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        }
+      },
+      "required": [
+        "name",
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "automount": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "create": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "create",
+        "automount",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "securityContext": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "$ref": "#/definitions/resourceList"
+        },
+        "limits": {
+          "$ref": "#/definitions/resourceList"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "image",
+    "envMap",
+    "backoffLimit",
+    "activeDeadlineSeconds",
+    "ingressController",
+    "configMap",
+    "serviceAccount"
+  ],
+  "definitions": {
+    "resourceList": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "number",
+            "minimum": 0
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

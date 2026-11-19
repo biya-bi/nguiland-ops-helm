@@ -1,0 +1,13 @@
+
+The ingress controller IP discovery Job has completed.
+
+ConfigMap:
+  Name:      {{ .Values.configMap.name }}
+  Namespace: {{ .Release.Namespace }}
+  Key:       {{ .Values.configMap.key }}
+
+To inspect the discovered IP, run:
+
+  kubectl get configmap {{ .Values.configMap.name }} \
+    -n {{ .Release.Namespace }} \
+    -o jsonpath='{.data.{{ .Values.configMap.key }}}'

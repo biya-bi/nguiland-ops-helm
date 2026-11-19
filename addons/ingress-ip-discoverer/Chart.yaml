@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ingress-ip-discoverer
+description: Discovers the ingress controller Service ClusterIP for Flux substitution
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
