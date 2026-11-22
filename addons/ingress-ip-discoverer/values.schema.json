@@ -127,13 +127,23 @@
         "additionalProperties": false
       }
     },
-    "backoffLimit": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "activeDeadlineSeconds": {
-      "type": "integer",
-      "minimum": 1
+    "job": {
+      "type": "object",
+      "properties": {
+        "backoffLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "backoffLimit",
+        "activeDeadlineSeconds"
+      ],
+      "additionalProperties": false
     },
     "ingressController": {
       "type": "object",
@@ -262,8 +272,7 @@
   "required": [
     "image",
     "envMap",
-    "backoffLimit",
-    "activeDeadlineSeconds",
+    "job",
     "ingressController",
     "cronJob",
     "configMap",

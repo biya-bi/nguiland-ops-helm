@@ -60,3 +60,57 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Common Pod template used by the discovery Job and CronJob.
+*/}}
+{{- define "ingress-ip-discoverer.podTemplate" -}}
+{{- $repository := .Values.image.repository | trim -}}
+{{- $image := $repository -}}
+{{- if .Values.image.digest -}}
+  {{- $digest := .Values.image.digest | trim -}}
+  {{- $image = printf "%s@%s" $repository $digest -}}
+{{- else -}}
+  {{- $tag := .Values.image.tag | trim -}}
+  {{- $image = printf "%s:%s" $repository $tag -}}
+{{- end -}}
+{{- $pullPolicy := .Values.image.pullPolicy | default "IfNotPresent" -}}
+
+metadata:
+  labels:
+    {{- include "ingress-ip-discoverer.selectorLabels" . | nindent 4 }}
+spec:
+  serviceAccountName: {{ include "ingress-ip-discoverer.serviceAccountName" . }}
+  {{- with .Values.podSecurityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  restartPolicy: Never
+  containers:
+    - name: {{ .Chart.Name }}
+      image: {{ $image | quote }}
+      imagePullPolicy: {{ $pullPolicy | quote }}
+      {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.resources }}
+      resources:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      env:
+        {{- range $name, $value := .Values.envMap }}
+        - name: {{ $name | quote }}
+          value: {{ tpl ($value | toString) $ | quote }}
+        {{- end }}
+        {{- with .Values.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      command:
+        - /bin/sh
+        - -c
+      args:
+        - |-
+          {{- .Files.Get "scripts/discover.sh" | nindent 10 }}
+{{- end }}

@@ -1,14 +1,3 @@
-{{- $repository := .Values.image.repository | trim -}}
-{{- $image := $repository -}}
-{{- if .Values.image.digest -}}
-  {{- $digest := .Values.image.digest | trim -}}
-  {{- $image = printf "%s@%s" $repository $digest -}}
-{{- else -}}
-  {{- $tag := .Values.image.tag | trim -}}
-  {{- $image = printf "%s:%s" $repository $tag -}}
-{{- end }}
-{{- $pullPolicy := .Values.image.pullPolicy | default "IfNotPresent" -}}
-
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -19,42 +8,7 @@ metadata:
     helm.sh/hook: post-install,post-upgrade,post-rollback
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: {{ .Values.backoffLimit }}
-  activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds }}
   template:
-    metadata:
-      labels:
-        {{- include "ingress-ip-discoverer.selectorLabels" . | nindent 8 }}
-    spec:
-      serviceAccountName: {{ include "ingress-ip-discoverer.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      restartPolicy: Never
-      containers:
-        - name: {{ .Chart.Name }}
-          image: {{ $image | quote }}
-          imagePullPolicy: {{ $pullPolicy | quote }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          env:
-            {{- range $name, $value := .Values.envMap }}
-            - name: {{ $name | quote }}
-              value: {{ tpl ($value | toString) $ | quote }}
-            {{- end }}
-            {{- with .Values.env }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          command:
-            - /bin/sh
-            - -c
-          args:
-            - |-
-{{ .Files.Get "scripts/discover.sh" | nindent 14 }}
+    {{- include "ingress-ip-discoverer.podTemplate" . | nindent 4 }}
