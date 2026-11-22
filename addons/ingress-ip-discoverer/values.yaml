@@ -59,3 +59,10 @@ envMap:
 
 # Additional Kubernetes environment variables.
 env: []
+
+cronJob:
+  enabled: true
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
