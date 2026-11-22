@@ -134,8 +134,8 @@ env:
     value: /run/secrets/postgres/extra-dbs
   - name: POSTGRES_PASSWORD_FILE
     value: /run/secrets/postgres/password
-  - name: POSTGRES_USER_FILE
-    value: /run/secrets/postgres/user
+  - name: POSTGRES_USERNAME_FILE
+    value: /run/secrets/postgres/username
 dataPvc:
   accessModes:
     - ReadWriteOnce

@@ -10,8 +10,8 @@ data:
 
     set -eou
 
-    user=`grep -m 1 . ${POSTGRES_USER_FILE}`
+    username=`grep -m 1 . ${POSTGRES_USERNAME_FILE}`
     database=`grep -m 1 . ${POSTGRES_DB_FILE}`
 
-    psql -U "${user}" -d "${database}" -c "SELECT 1" --tuples-only
+    psql -U "${username}" -d "${database}" -c "SELECT 1" --tuples-only
 
