@@ -98,8 +98,4 @@ main() {
   run
 }
 
-if (return 0 2>/dev/null); then
-  :
-else
-  main "$@"
-fi
+main "$@"
